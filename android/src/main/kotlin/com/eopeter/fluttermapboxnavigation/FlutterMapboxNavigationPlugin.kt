@@ -64,6 +64,7 @@ class FlutterMapboxNavigationPlugin : FlutterPlugin, MethodCallHandler,
         var mapStyleUrlDay: String? = null
         var mapStyleUrlNight: String? = null
         var navigationLanguage = "en"
+        var mapLocale: String? = null
         var navigationVoiceUnits = DirectionsCriteria.IMPERIAL
         var voiceInstructionsEnabled = true
         var bannerInstructionsEnabled = true
@@ -155,6 +156,8 @@ class FlutterMapboxNavigationPlugin : FlutterPlugin, MethodCallHandler,
         if (language != null) {
             navigationLanguage = language
         }
+
+        mapLocale = arguments?.get("mapLocale") as? String
 
         val voiceEnabled = arguments?.get("voiceInstructionsEnabled") as? Boolean
         if (voiceEnabled != null) {

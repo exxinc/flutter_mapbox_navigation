@@ -33,6 +33,8 @@ import com.mapbox.navigation.core.arrival.ArrivalObserver
 import com.mapbox.navigation.core.directions.session.RoutesObserver
 import com.mapbox.navigation.core.lifecycle.MapboxNavigationApp
 import com.mapbox.navigation.core.trip.session.*
+import com.mapbox.navigation.dropin.map.MapViewObserver
+import com.mapbox.maps.MapView
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
@@ -61,8 +63,34 @@ open class TurnByTurn(
             .setup(navigationOptions)
             .attach(this.activity as LifecycleOwner)
 
+        // Register map style observer for label localization
+        this.binding.navigationView.registerMapObserver(mapStyleObserver)
+
         // initialize navigation trip observers
         this.registerObservers()
+    }
+
+    /**
+     * Observes map style loading and localizes map labels
+     */
+    private val mapStyleObserver = object : MapViewObserver() {
+        override fun onAttached(mapView: MapView) {
+            val locale = this@TurnByTurn.mapLocale
+            if (locale != null) {
+                mapView.mapboxMap.getStyle { style ->
+                    style.localizeLabels(Locale(locale))
+                }
+                mapView.mapboxMap.subscribeStyleLoaded {
+                    mapView.mapboxMap.getStyle { style ->
+                        style.localizeLabels(Locale(locale))
+                    }
+                }
+            }
+        }
+
+        override fun onDetached(mapView: MapView) {
+            // No cleanup needed
+        }
     }
 
     override fun onMethodCall(methodCall: MethodCall, result: MethodChannel.Result) {
@@ -243,6 +271,8 @@ open class TurnByTurn(
             this.navigationLanguage = language
         }
 
+        this.mapLocale = arguments["mapLocale"] as? String
+
         val units = arguments["units"] as? String
 
         if (units != null) {
@@ -339,6 +369,8 @@ open class TurnByTurn(
         MapboxNavigationApp.current()?.unregisterLocationObserver(this.locationObserver)
         MapboxNavigationApp.current()?.unregisterRouteProgressObserver(this.routeProgressObserver)
         MapboxNavigationApp.current()?.unregisterArrivalObserver(this.arrivalObserver)
+        // Unregister map style observer
+        this.binding.navigationView.unregisterMapObserver(mapStyleObserver)
     }
 
     // Flutter stream listener delegate methods
@@ -380,6 +412,7 @@ open class TurnByTurn(
     private var durationRemaining: Double? = null
 
     private var alternatives = true
+    private var mapLocale: String? = null
 
     var allowsUTurnAtWayPoints = false
     var enableRefresh = false

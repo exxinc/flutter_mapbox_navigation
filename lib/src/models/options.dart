@@ -15,6 +15,7 @@ class MapBoxOptions {
     this.initialLatitude,
     this.initialLongitude,
     this.language,
+    this.mapLocale,
     this.zoom,
     this.bearing,
     this.tilt,
@@ -41,6 +42,7 @@ class MapBoxOptions {
     initialLatitude = option.initialLatitude;
     initialLongitude = option.initialLongitude;
     language = option.language;
+    mapLocale = option.mapLocale;
     zoom = option.zoom;
     bearing = option.bearing;
     tilt = option.tilt;
@@ -78,6 +80,12 @@ class MapBoxOptions {
   ///  https://docs.mapbox.com/android/navigation/overview/localization/ or
   /// https://docs.mapbox.com/ios/api/navigation/0.14.1/localization-and-internationalization.html
   String? language;
+
+  /// 2-letter ISO 639-1 code for map labels localization.
+  /// This property affects the language of map labels (place names, road names, etc.)
+  /// displayed on the map. Defaults to device locale if not specified.
+  /// Example: "ja" for Japanese, "en" for English, "zh" for Chinese.
+  String? mapLocale;
 
   /// Zoom controls the scale of the map and consumes any value between 0
   /// and 22. At zoom level 0, the viewport shows continents and other world
@@ -179,6 +187,7 @@ class MapBoxOptions {
     addIfNonNull('initialLatitude', initialLatitude);
     addIfNonNull('initialLongitude', initialLongitude);
     addIfNonNull('language', language);
+    addIfNonNull('mapLocale', mapLocale);
     addIfNonNull('animateBuildRoute', animateBuildRoute);
     addIfNonNull('longPressDestinationEnabled', longPressDestinationEnabled);
 

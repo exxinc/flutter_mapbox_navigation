@@ -27,6 +27,7 @@ public class NavigationFactory : NSObject, FlutterStreamHandler
     var _allowsUTurnAtWayPoints: Bool?
     var _isOptimized = false
     var _language = "en"
+    var _mapLocale: String?
     var _voiceUnits = "imperial"
     var _mapStyleUrlDay: String?
     var _mapStyleUrlNight: String?
@@ -173,7 +174,11 @@ public class NavigationFactory : NSObject, FlutterStreamHandler
             self._navigationViewController = NavigationViewController(for: routeResponse, routeIndex: 0, routeOptions: options, navigationOptions: navOptions)
             self._navigationViewController!.modalPresentationStyle = .fullScreen
             self._navigationViewController!.delegate = self
-            self._navigationViewController!.navigationMapView!.localizeLabels()
+            if let mapLocale = _mapLocale {
+                self._navigationViewController!.navigationMapView!.localizeLabels(locale: Locale(identifier: mapLocale))
+            } else {
+                self._navigationViewController!.navigationMapView!.localizeLabels()
+            }
             self._navigationViewController!.showsReportFeedback = _showReportFeedbackButton
             self._navigationViewController!.showsEndOfRouteFeedback = _showEndOfRouteFeedback
         }
@@ -210,6 +215,7 @@ public class NavigationFactory : NSObject, FlutterStreamHandler
     
     func parseFlutterArguments(arguments: NSDictionary?) {
         _language = arguments?["language"] as? String ?? _language
+        _mapLocale = arguments?["mapLocale"] as? String
         _voiceUnits = arguments?["units"] as? String ?? _voiceUnits
         _simulateRoute = arguments?["simulateRoute"] as? Bool ?? _simulateRoute
         _isOptimized = arguments?["isOptimized"] as? Bool ?? _isOptimized

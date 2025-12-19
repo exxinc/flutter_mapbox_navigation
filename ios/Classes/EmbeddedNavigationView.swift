@@ -300,6 +300,12 @@ public class FlutterMapboxNavigationView : NavigationFactory, FlutterPlatformVie
 
         _navigationViewController = NavigationViewController(for: response, routeIndex: selectedRouteIndex, routeOptions: routeOptions!, navigationOptions: navigationOptions)
         _navigationViewController!.delegate = self
+        
+        if let mapLocale = _mapLocale {
+            _navigationViewController!.navigationMapView!.localizeLabels(locale: Locale(identifier: mapLocale))
+        } else {
+            _navigationViewController!.navigationMapView!.localizeLabels()
+        }
 
         _navigationViewController!.showsReportFeedback = _showReportFeedbackButton
         _navigationViewController!.showsEndOfRouteFeedback = _showEndOfRouteFeedback

@@ -50,6 +50,7 @@ import com.mapbox.navigation.dropin.map.MapViewObserver
 import com.mapbox.navigation.dropin.navigationview.NavigationViewListener
 import com.mapbox.navigation.utils.internal.ifNonNull
 import androidx.core.content.ContextCompat
+import java.util.Locale
 
 class NavigationActivity : AppCompatActivity() {
     private var finishBroadcastReceiver: BroadcastReceiver? = null
@@ -100,6 +101,9 @@ class NavigationActivity : AppCompatActivity() {
         MapboxNavigationApp
             .setup(navigationOptions)
             .attach(this)
+
+        // Register map style observer for label localization
+        binding.navigationView.registerMapObserver(mapStyleObserver)
 
         if (FlutterMapboxNavigationPlugin.longPressDestinationEnabled) {
             binding.navigationView.registerMapObserver(onMapLongClick)
@@ -189,6 +193,8 @@ class NavigationActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
+        // Unregister map style observer
+        binding.navigationView.unregisterMapObserver(mapStyleObserver)
         if (FlutterMapboxNavigationPlugin.longPressDestinationEnabled) {
             binding.navigationView.unregisterMapObserver(onMapLongClick)
         }
@@ -413,6 +419,29 @@ class NavigationActivity : AppCompatActivity() {
     private val routesObserver = RoutesObserver { routeUpdateResult ->
         if (routeUpdateResult.navigationRoutes.isNotEmpty()) {
             sendEvent(MapBoxEvents.REROUTE_ALONG);
+        }
+    }
+
+    /**
+     * Observes map style loading and localizes map labels
+     */
+    private val mapStyleObserver = object : MapViewObserver() {
+        override fun onAttached(mapView: MapView) {
+            val locale = FlutterMapboxNavigationPlugin.mapLocale
+            if (locale != null) {
+                mapView.mapboxMap.getStyle { style ->
+                    style.localizeLabels(Locale(locale))
+                }
+                mapView.mapboxMap.subscribeStyleLoaded {
+                    mapView.mapboxMap.getStyle { style ->
+                        style.localizeLabels(Locale(locale))
+                    }
+                }
+            }
+        }
+
+        override fun onDetached(mapView: MapView) {
+            // No cleanup needed
         }
     }
 
