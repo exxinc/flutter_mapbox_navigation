@@ -50,6 +50,7 @@ import com.mapbox.navigation.dropin.map.MapViewObserver
 import com.mapbox.navigation.dropin.navigationview.NavigationViewListener
 import com.mapbox.navigation.utils.internal.ifNonNull
 import androidx.core.content.ContextCompat
+import java.util.Locale
 
 class NavigationActivity : AppCompatActivity() {
     private var finishBroadcastReceiver: BroadcastReceiver? = null
@@ -111,6 +112,12 @@ class NavigationActivity : AppCompatActivity() {
         if (FlutterMapboxNavigationPlugin.enableOnMapTapCallback) {
             binding.navigationView.registerMapObserver(onMapClick)
         }
+
+        // Register map label localization observer
+        if (FlutterMapboxNavigationPlugin.mapLocale != null) {
+            binding.navigationView.registerMapObserver(mapLabelLocalizeObserver)
+        }
+
         val act = this
         // Add custom view binders
         binding.navigationView.customizeViewBinders {
@@ -194,6 +201,9 @@ class NavigationActivity : AppCompatActivity() {
         }
         if (FlutterMapboxNavigationPlugin.enableOnMapTapCallback) {
             binding.navigationView.unregisterMapObserver(onMapClick)
+        }
+        if (FlutterMapboxNavigationPlugin.mapLocale != null) {
+            binding.navigationView.unregisterMapObserver(mapLabelLocalizeObserver)
         }
         binding.navigationView.removeListener(navigationStateListener)
 
@@ -460,6 +470,25 @@ class NavigationActivity : AppCompatActivity() {
             )
             sendEvent(MapBoxEvents.ON_MAP_TAP, JSONObject(waypoint).toString())
             return false
+        }
+    }
+
+    /**
+     * Observes [MapView] to localize map labels when style is loaded
+     */
+    private val mapLabelLocalizeObserver = object : MapViewObserver() {
+        override fun onAttached(mapView: MapView) {
+            val localeString = FlutterMapboxNavigationPlugin.mapLocale
+            if (localeString != null) {
+                mapView.mapboxMap.getStyle { style ->
+                    val locale = Locale(localeString)
+                    style.localizeLabels(locale)
+                }
+            }
+        }
+
+        override fun onDetached(mapView: MapView) {
+            // no-op
         }
     }
 }
