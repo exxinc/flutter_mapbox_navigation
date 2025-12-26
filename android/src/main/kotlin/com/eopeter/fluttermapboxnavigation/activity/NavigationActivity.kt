@@ -25,6 +25,7 @@ import com.mapbox.api.directions.v5.models.RouteOptions
 import com.mapbox.geojson.Point
 import com.mapbox.maps.MapView
 import com.mapbox.maps.Style
+import com.mapbox.maps.extension.localization.localizeLabels
 import com.mapbox.maps.plugin.gestures.OnMapLongClickListener
 import com.mapbox.maps.plugin.gestures.OnMapClickListener
 import com.mapbox.maps.plugin.gestures.gestures
@@ -480,8 +481,11 @@ class NavigationActivity : AppCompatActivity() {
         override fun onAttached(mapView: MapView) {
             val localeString = FlutterMapboxNavigationPlugin.mapLocale
             if (localeString != null) {
-                mapView.mapboxMap.getStyle { style ->
-                    val locale = Locale(localeString)
+                val locale = Locale(localeString)
+                val mapboxMap = mapView.getMapboxMap()
+                // Apply localization when style is loaded
+                mapboxMap.getStyle { style ->
+                    // Use the extension function - it should work if properly imported
                     style.localizeLabels(locale)
                 }
             }
