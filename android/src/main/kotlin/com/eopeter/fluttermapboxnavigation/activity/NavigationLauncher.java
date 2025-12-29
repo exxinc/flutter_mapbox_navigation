@@ -3,6 +3,7 @@ package com.eopeter.fluttermapboxnavigation.activity;
 import android.app.Activity;
 import android.content.Intent;
 
+import com.eopeter.fluttermapboxnavigation.activity.NavigationActivity;
 import com.eopeter.fluttermapboxnavigation.models.Waypoint;
 
 import java.io.Serializable;
