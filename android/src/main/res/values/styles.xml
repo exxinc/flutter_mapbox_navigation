@@ -9,11 +9,6 @@
         <item name="colorAccent">@color/colorAccent</item>
     </style>
 
-    <style name="Theme_AppCompat_NoActionBar" parent="Theme.AppCompat.NoActionBar">
-        <item name="windowNoTitle">true</item>
-        <item name="android:windowNoTitle">true</item>
-    </style>
-
     <style name="MapboxCustomTripProgressStyle" parent="MapboxStyleTripProgressView">
         <item name="tripProgressTextColor">#7B3CEA</item>
         <item name="tripProgressViewBackgroundColor">#EEEEEE</item>
