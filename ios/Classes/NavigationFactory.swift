@@ -174,10 +174,18 @@ public class NavigationFactory : NSObject, FlutterStreamHandler
             self._navigationViewController = NavigationViewController(for: routeResponse, routeIndex: 0, routeOptions: options, navigationOptions: navOptions)
             self._navigationViewController!.modalPresentationStyle = .fullScreen
             self._navigationViewController!.delegate = self
+            // Apply map localization when style is loaded
             if let mapLocale = _mapLocale {
-                self._navigationViewController!.navigationMapView!.localizeLabels(locale: Locale(identifier: mapLocale))
-            } else {
-                self._navigationViewController!.navigationMapView!.localizeLabels()
+                let locale = Locale(identifier: mapLocale)
+                let navigationMapView = self._navigationViewController!.navigationMapView!
+                navigationMapView.mapView.mapboxMap.onEvery(event: .styleLoaded) { [weak self] _ in
+                    guard let self = self else { return }
+                    let style = navigationMapView.mapView.mapboxMap.style
+                    try? style.localizeLabels(into: locale)
+                }
+                // Also apply immediately if style is already loaded
+                let style = navigationMapView.mapView.mapboxMap.style
+                try? style.localizeLabels(into: locale)
             }
             self._navigationViewController!.showsReportFeedback = _showReportFeedbackButton
             self._navigationViewController!.showsEndOfRouteFeedback = _showEndOfRouteFeedback

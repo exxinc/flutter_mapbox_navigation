@@ -152,6 +152,16 @@ public class FlutterMapboxNavigationView : NavigationFactory, FlutterPlatformVie
             onTapGesture.delegate = self
             navigationMapView?.addGestureRecognizer(onTapGesture)
         }
+
+        // Apply map localization when style is loaded
+        if let mapLocale = _mapLocale {
+            let locale = Locale(identifier: mapLocale)
+            navigationMapView.mapView.mapboxMap.onEvery(event: .styleLoaded) { [weak self] _ in
+                guard let self = self else { return }
+                let style = self.navigationMapView.mapView.mapboxMap.style
+                try? style.localizeLabels(into: locale)
+            }
+        }
     }
 
     func clearRoute(arguments: NSDictionary?, result: @escaping FlutterResult)
