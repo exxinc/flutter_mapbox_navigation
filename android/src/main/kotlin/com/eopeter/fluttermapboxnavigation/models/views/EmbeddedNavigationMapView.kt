@@ -9,6 +9,7 @@ import com.eopeter.fluttermapboxnavigation.models.MapBoxEvents
 import com.eopeter.fluttermapboxnavigation.utilities.PluginUtilities
 import com.mapbox.geojson.Point
 import com.mapbox.maps.MapView
+import com.mapbox.maps.extension.localization.localizeLabels
 import com.mapbox.maps.plugin.gestures.OnMapClickListener
 import com.mapbox.maps.plugin.gestures.gestures
 import com.mapbox.navigation.dropin.map.MapViewObserver
@@ -104,8 +105,11 @@ class EmbeddedNavigationMapView(
         override fun onAttached(mapView: MapView) {
             val localeString = this@EmbeddedNavigationMapView.mapLocale
             if (localeString != null) {
-                mapView.mapboxMap.getStyle { style ->
-                    val locale = Locale(localeString)
+                val locale = Locale(localeString)
+                val mapboxMap = mapView.getMapboxMap()
+                // Apply localization when style is loaded
+                mapboxMap.getStyle { style ->
+                    // Use the extension function - it should work if properly imported
                     style.localizeLabels(locale)
                 }
             }
