@@ -40,6 +40,7 @@ public class NavigationFactory : NSObject, FlutterStreamHandler
     var _showReportFeedbackButton = true
     var _showEndOfRouteFeedback = true
     var _enableOnMapTapCallback = false
+    var _mapLocale: String?
     var navigationDirections: Directions?
     
     func addWayPoints(arguments: NSDictionary?, result: @escaping FlutterResult)
@@ -173,7 +174,19 @@ public class NavigationFactory : NSObject, FlutterStreamHandler
             self._navigationViewController = NavigationViewController(for: routeResponse, routeIndex: 0, routeOptions: options, navigationOptions: navOptions)
             self._navigationViewController!.modalPresentationStyle = .fullScreen
             self._navigationViewController!.delegate = self
-            self._navigationViewController!.navigationMapView!.localizeLabels()
+            // Apply map localization when style is loaded
+            if let mapLocale = _mapLocale {
+                let locale = Locale(identifier: mapLocale)
+                let navigationMapView = self._navigationViewController!.navigationMapView!
+                navigationMapView.mapView.mapboxMap.onEvery(event: .styleLoaded) { [weak self] _ in
+                    guard let self = self else { return }
+                    let style = navigationMapView.mapView.mapboxMap.style
+                    try? style.localizeLabels(into: locale)
+                }
+                // Also apply immediately if style is already loaded
+                let style = navigationMapView.mapView.mapboxMap.style
+                try? style.localizeLabels(into: locale)
+            }
             self._navigationViewController!.showsReportFeedback = _showReportFeedbackButton
             self._navigationViewController!.showsEndOfRouteFeedback = _showEndOfRouteFeedback
         }
@@ -226,6 +239,7 @@ public class NavigationFactory : NSObject, FlutterStreamHandler
         _animateBuildRoute = arguments?["animateBuildRoute"] as? Bool ?? _animateBuildRoute
         _longPressDestinationEnabled = arguments?["longPressDestinationEnabled"] as? Bool ?? _longPressDestinationEnabled
         _alternatives = arguments?["alternatives"] as? Bool ?? _alternatives
+        _mapLocale = arguments?["mapLocale"] as? String
     }
     
     

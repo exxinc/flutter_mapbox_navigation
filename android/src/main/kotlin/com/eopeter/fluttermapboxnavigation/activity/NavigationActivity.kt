@@ -25,6 +25,7 @@ import com.mapbox.api.directions.v5.models.RouteOptions
 import com.mapbox.geojson.Point
 import com.mapbox.maps.MapView
 import com.mapbox.maps.Style
+import com.mapbox.maps.extension.localization.localizeLabels
 import com.mapbox.maps.plugin.gestures.OnMapLongClickListener
 import com.mapbox.maps.plugin.gestures.OnMapClickListener
 import com.mapbox.maps.plugin.gestures.gestures
@@ -50,6 +51,7 @@ import com.mapbox.navigation.dropin.map.MapViewObserver
 import com.mapbox.navigation.dropin.navigationview.NavigationViewListener
 import com.mapbox.navigation.utils.internal.ifNonNull
 import androidx.core.content.ContextCompat
+import java.util.Locale
 
 class NavigationActivity : AppCompatActivity() {
     private var finishBroadcastReceiver: BroadcastReceiver? = null
@@ -85,7 +87,7 @@ class NavigationActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setTheme(R.style.Theme_AppCompat_NoActionBar)
+        setTheme(androidx.appcompat.R.style.Theme_AppCompat_NoActionBar)
         binding = NavigationActivityBinding.inflate(layoutInflater)
         setContentView(binding.root)
         binding.navigationView.addListener(navigationStateListener)
@@ -111,6 +113,12 @@ class NavigationActivity : AppCompatActivity() {
         if (FlutterMapboxNavigationPlugin.enableOnMapTapCallback) {
             binding.navigationView.registerMapObserver(onMapClick)
         }
+
+        // Register map label localization observer
+        if (FlutterMapboxNavigationPlugin.mapLocale != null) {
+            binding.navigationView.registerMapObserver(mapLabelLocalizeObserver)
+        }
+
         val act = this
         // Add custom view binders
         binding.navigationView.customizeViewBinders {
@@ -194,6 +202,9 @@ class NavigationActivity : AppCompatActivity() {
         }
         if (FlutterMapboxNavigationPlugin.enableOnMapTapCallback) {
             binding.navigationView.unregisterMapObserver(onMapClick)
+        }
+        if (FlutterMapboxNavigationPlugin.mapLocale != null) {
+            binding.navigationView.unregisterMapObserver(mapLabelLocalizeObserver)
         }
         binding.navigationView.removeListener(navigationStateListener)
 
@@ -460,6 +471,28 @@ class NavigationActivity : AppCompatActivity() {
             )
             sendEvent(MapBoxEvents.ON_MAP_TAP, JSONObject(waypoint).toString())
             return false
+        }
+    }
+
+    /**
+     * Observes [MapView] to localize map labels when style is loaded
+     */
+    private val mapLabelLocalizeObserver = object : MapViewObserver() {
+        override fun onAttached(mapView: MapView) {
+            val localeString = FlutterMapboxNavigationPlugin.mapLocale
+            if (localeString != null) {
+                val locale = Locale(localeString)
+                val mapboxMap = mapView.getMapboxMap()
+                // Apply localization when style is loaded
+                mapboxMap.getStyle { style ->
+                    // Use the extension function - it should work if properly imported
+                    style.localizeLabels(locale)
+                }
+            }
+        }
+
+        override fun onDetached(mapView: MapView) {
+            // no-op
         }
     }
 }

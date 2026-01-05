@@ -9,6 +9,7 @@ import com.eopeter.fluttermapboxnavigation.models.MapBoxEvents
 import com.eopeter.fluttermapboxnavigation.utilities.PluginUtilities
 import com.mapbox.geojson.Point
 import com.mapbox.maps.MapView
+import com.mapbox.maps.extension.localization.localizeLabels
 import com.mapbox.maps.plugin.gestures.OnMapClickListener
 import com.mapbox.maps.plugin.gestures.gestures
 import com.mapbox.navigation.dropin.map.MapViewObserver
@@ -17,6 +18,7 @@ import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.platform.PlatformView
 import org.json.JSONObject
+import java.util.Locale
 
 class EmbeddedNavigationMapView(
     context: Context,
@@ -30,6 +32,7 @@ class EmbeddedNavigationMapView(
     private val viewId: Int = vId
     private val messenger: BinaryMessenger = binaryMessenger
     private val arguments = args as Map<*, *>
+    private var mapLocale: String? = null
 
     override fun initFlutterChannelHandlers() {
         methodChannel = MethodChannel(messenger, "flutter_mapbox_navigation/${viewId}")
@@ -50,6 +53,12 @@ class EmbeddedNavigationMapView(
         if((this.arguments?.get("enableOnMapTapCallback") as Boolean)) {
             this.binding.navigationView.registerMapObserver(onMapClick)
         }
+
+        // Register map label localization observer
+        this.mapLocale = this.arguments?.get("mapLocale") as? String
+        if (this.mapLocale != null) {
+            this.binding.navigationView.registerMapObserver(mapLabelLocalizeObserver)
+        }
     }
 
     override fun getView(): View {
@@ -59,6 +68,9 @@ class EmbeddedNavigationMapView(
     override fun dispose() {
         if((this.arguments?.get("enableOnMapTapCallback") as Boolean)) {
             this.binding.navigationView.unregisterMapObserver(onMapClick)
+        }
+        if (this.mapLocale != null) {
+            this.binding.navigationView.unregisterMapObserver(mapLabelLocalizeObserver)
         }
         unregisterObservers()
     }
@@ -83,6 +95,28 @@ class EmbeddedNavigationMapView(
             )
             PluginUtilities.sendEvent(MapBoxEvents.ON_MAP_TAP, JSONObject(waypoint).toString())
             return false
+        }
+    }
+
+    /**
+     * Observes [MapView] to localize map labels when style is loaded
+     */
+    private val mapLabelLocalizeObserver = object : MapViewObserver() {
+        override fun onAttached(mapView: MapView) {
+            val localeString = this@EmbeddedNavigationMapView.mapLocale
+            if (localeString != null) {
+                val locale = Locale(localeString)
+                val mapboxMap = mapView.getMapboxMap()
+                // Apply localization when style is loaded
+                mapboxMap.getStyle { style ->
+                    // Use the extension function - it should work if properly imported
+                    style.localizeLabels(locale)
+                }
+            }
+        }
+
+        override fun onDetached(mapView: MapView) {
+            // no-op
         }
     }
 
