@@ -31,14 +31,19 @@ jobs:
           filters: |
             relevant:
               - '.github/workflows/**'
+              - '.github/actions/**'
               - '.github/zizmor.yml'
               - '.github/zizmor.yaml'
+
+      - name: Ensure action scan path exists
+        if: steps.filter.outputs.relevant == 'true'
+        run: mkdir -p .github/actions
 
       - name: Run zizmor
         if: steps.filter.outputs.relevant == 'true'
         uses: zizmorcore/zizmor-action@192e21d79ab29983730a13d1382995c2307fbcaa # v0.5.7
         with:
-          inputs: .github/workflows/
+          inputs: .github/workflows/ .github/actions/
           persona: regular
           version: v1.26.1
           advanced-security: false
@@ -46,4 +51,4 @@ jobs:
 
       - name: No relevant changes
         if: steps.filter.outputs.relevant != 'true'
-        run: echo "No workflow or zizmor config changes. Skipping zizmor scan."
+        run: echo "No workflow, action, or zizmor config changes. Skipping zizmor scan."
