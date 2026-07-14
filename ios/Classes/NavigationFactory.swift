@@ -64,12 +64,82 @@ public class NavigationFactory : NSObject, FlutterStreamHandler
         
         startNavigationWithWayPoints(wayPoints: _wayPoints, flutterResult: result, isUpdatingWaypoints: true)
     }
+
+    private func sceneWindow() -> UIWindow? {
+        if !Thread.isMainThread {
+            return DispatchQueue.main.sync { sceneWindow() }
+        }
+
+        let windowScenes = UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+        let activeScenes = windowScenes
+            .filter { $0.activationState == .foregroundActive }
+        let candidateScenes = activeScenes.isEmpty
+            ? windowScenes.filter { $0.activationState == .foregroundInactive }
+            : activeScenes
+        let windows = candidateScenes.flatMap { $0.windows }
+
+        return windows.first(where: \.isKeyWindow)
+            ?? windows.first(where: { !$0.isHidden && $0.alpha > 0 })
+    }
+
+    private func topViewController(from root: UIViewController?) -> UIViewController? {
+        guard let root = root else { return nil }
+        if let presented = root.presentedViewController {
+            return topViewController(from: presented)
+        }
+        if let navigation = root as? UINavigationController {
+            return topViewController(from: navigation.visibleViewController)
+        }
+        if let tab = root as? UITabBarController {
+            return topViewController(from: tab.selectedViewController)
+        }
+        return root
+    }
+
+    func topPresentingViewController() -> UIViewController? {
+        if !Thread.isMainThread {
+            return DispatchQueue.main.sync { topPresentingViewController() }
+        }
+        return topViewController(from: sceneWindow()?.rootViewController)
+    }
+
+    private func flutterViewController(from root: UIViewController?) -> FlutterViewController? {
+        guard let root = root else { return nil }
+        if let flutter = root as? FlutterViewController {
+            return flutter
+        }
+        if let navigation = root as? UINavigationController,
+           let flutter = flutterViewController(from: navigation.visibleViewController) {
+            return flutter
+        }
+        if let tab = root as? UITabBarController,
+           let flutter = flutterViewController(from: tab.selectedViewController) {
+            return flutter
+        }
+        for child in root.children {
+            if let flutter = flutterViewController(from: child) {
+                return flutter
+            }
+        }
+        return flutterViewController(from: root.presentedViewController)
+    }
+
+    func sceneFlutterViewController() -> FlutterViewController? {
+        if !Thread.isMainThread {
+            return DispatchQueue.main.sync { sceneFlutterViewController() }
+        }
+        return flutterViewController(from: sceneWindow()?.rootViewController)
+    }
     
     func startFreeDrive(arguments: NSDictionary?, result: @escaping FlutterResult)
     {
         let freeDriveViewController = FreeDriveViewController()
-        let flutterViewController = UIApplication.shared.delegate?.window??.rootViewController as! FlutterViewController
-        flutterViewController.present(freeDriveViewController, animated: true, completion: nil)
+        guard let presenter = topPresentingViewController() else {
+            result(FlutterError(code: "no_view_controller", message: "Unable to find an active scene for navigation", details: nil))
+            return
+        }
+        presenter.present(freeDriveViewController, animated: true, completion: nil)
     }
     
     func startNavigation(arguments: NSDictionary?, result: @escaping FlutterResult)
@@ -133,8 +203,11 @@ public class NavigationFactory : NSObject, FlutterStreamHandler
                     strongSelf._routes = routes
                     let routeOptionsView = RouteOptionsViewController(routes: routes, options: strongSelf._options!)
                     
-                    let flutterViewController = UIApplication.shared.delegate?.window??.rootViewController as! FlutterViewController
-                    flutterViewController.present(routeOptionsView, animated: true, completion: nil)
+                    guard let presenter = strongSelf.topPresentingViewController() else {
+                        flutterResult(FlutterError(code: "no_view_controller", message: "Unable to find an active scene for route options", details: nil))
+                        return
+                    }
+                    presenter.present(routeOptionsView, animated: true, completion: nil)
                 }
                 else
                 {
@@ -158,7 +231,7 @@ public class NavigationFactory : NSObject, FlutterStreamHandler
                         }
                     }
                     else {
-                        strongSelf.startNavigation(routeResponse: response, options: strongSelf._options!, navOptions: navigationOptions)
+                        strongSelf.startNavigation(routeResponse: response, options: strongSelf._options!, navOptions: navigationOptions, flutterResult: flutterResult)
                     }
                 }
             }
@@ -166,7 +239,7 @@ public class NavigationFactory : NSObject, FlutterStreamHandler
         
     }
     
-    func startNavigation(routeResponse: RouteResponse, options: NavigationRouteOptions, navOptions: NavigationOptions)
+    func startNavigation(routeResponse: RouteResponse, options: NavigationRouteOptions, navOptions: NavigationOptions, flutterResult: FlutterResult? = nil)
     {
         isEmbeddedNavigation = false
         if(self._navigationViewController == nil)
@@ -177,21 +250,27 @@ public class NavigationFactory : NSObject, FlutterStreamHandler
             // Apply map localization when style is loaded
             if let mapLocale = _mapLocale {
                 let locale = Locale(identifier: mapLocale)
-                let navigationMapView = self._navigationViewController!.navigationMapView!
-                navigationMapView.mapView.mapboxMap.onEvery(event: .styleLoaded) { [weak self] _ in
-                    guard let self = self else { return }
+                _ = self._navigationViewController?.view
+                if let navigationMapView = self._navigationViewController?.navigationMapView {
+                    navigationMapView.mapView.mapboxMap.onEvery(event: .styleLoaded) { _ in
+                        let style = navigationMapView.mapView.mapboxMap.style
+                        try? style.localizeLabels(into: locale)
+                    }
                     let style = navigationMapView.mapView.mapboxMap.style
                     try? style.localizeLabels(into: locale)
                 }
-                // Also apply immediately if style is already loaded
-                let style = navigationMapView.mapView.mapboxMap.style
-                try? style.localizeLabels(into: locale)
             }
             self._navigationViewController!.showsReportFeedback = _showReportFeedbackButton
             self._navigationViewController!.showsEndOfRouteFeedback = _showEndOfRouteFeedback
         }
-        let flutterViewController = UIApplication.shared.delegate?.window??.rootViewController as! FlutterViewController
-        flutterViewController.present(self._navigationViewController!, animated: true, completion: nil)
+        guard let presenter = topPresentingViewController(),
+              let navigationViewController = self._navigationViewController else {
+            sendEvent(eventType: MapBoxEventType.route_build_failed, data: "Unable to find an active scene for navigation")
+            flutterResult?(FlutterError(code: "no_view_controller", message: "Unable to find an active scene for navigation", details: nil))
+            self._navigationViewController = nil
+            return
+        }
+        presenter.present(navigationViewController, animated: true, completion: nil)
     }
     
     func setNavigationOptions(wayPoints: [Waypoint]) {

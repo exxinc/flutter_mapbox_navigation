@@ -314,13 +314,17 @@ public class FlutterMapboxNavigationView : NavigationFactory, FlutterPlatformVie
         _navigationViewController!.showsReportFeedback = _showReportFeedbackButton
         _navigationViewController!.showsEndOfRouteFeedback = _showEndOfRouteFeedback
 
-        let flutterViewController = UIApplication.shared.delegate?.window?!.rootViewController as! FlutterViewController
+        guard let flutterViewController = sceneFlutterViewController() else {
+            result(FlutterError(code: "no_view_controller", message: "Unable to find FlutterViewController in the active scene", details: nil))
+            _navigationViewController = nil
+            return
+        }
         flutterViewController.addChild(_navigationViewController!)
 
         self.navigationMapView.addSubview(_navigationViewController!.view)
         _navigationViewController!.view.translatesAutoresizingMaskIntoConstraints = false
         constraintsWithPaddingBetween(holderView: self.navigationMapView, topView: _navigationViewController!.view, padding: 0.0)
-        flutterViewController.didMove(toParent: flutterViewController)
+        _navigationViewController!.didMove(toParent: flutterViewController)
         result(true)
 
     }
