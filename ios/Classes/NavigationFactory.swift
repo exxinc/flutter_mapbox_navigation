@@ -252,7 +252,8 @@ public class NavigationFactory : NSObject, FlutterStreamHandler
                 let locale = Locale(identifier: mapLocale)
                 _ = self._navigationViewController?.view
                 if let navigationMapView = self._navigationViewController?.navigationMapView {
-                    navigationMapView.mapView.mapboxMap.onEvery(event: .styleLoaded) { _ in
+                    navigationMapView.mapView.mapboxMap.onEvery(event: .styleLoaded) { [weak navigationMapView] _ in
+                        guard let navigationMapView = navigationMapView else { return }
                         let style = navigationMapView.mapView.mapboxMap.style
                         try? style.localizeLabels(into: locale)
                     }
